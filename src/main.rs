@@ -6,7 +6,6 @@ use std::sync::{Mutex, MutexGuard};
 use std::{env, process::exit};
 
 mod scanner;
-use scanner::*;
 
 #[derive(Debug)]
 struct State {
@@ -52,9 +51,10 @@ fn run_prompt() {
 
 fn run(script: &str) {
     if script.len() > 0 {
-        let tokens = scanner::scan_tokens(script);
+        let scanner = &mut scanner::Scanner::new(script);
+        let tokens = scanner.scan_tokens();
         for token in tokens {
-            println!("Token: {:?}", token);
+            println!("{:?}", token);
         }
     }
 }
