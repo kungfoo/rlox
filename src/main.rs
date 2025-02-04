@@ -1,7 +1,9 @@
 use std::fs;
 use std::io::{self, BufRead};
-use std::thread::scope;
 use std::{env, process::exit};
+
+mod scanner;
+use scanner::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -31,6 +33,9 @@ fn run_prompt() {
 
 fn run(script: &str) {
     if script.len() > 0 {
-        println!("Running {}", script);
+        let tokens = scanner::scan_tokens(script);
+        for token in tokens {
+            println!("Token: {:?}", token);
+        }
     }
 }
