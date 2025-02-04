@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::{self, BufRead};
+use std::thread::scope;
 use std::{env, process::exit};
 
 fn main() {
@@ -23,10 +24,13 @@ fn run_file(filename: &str) {
 fn run_prompt() {
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
-        run(&line.expect("Unable to read line from stdin!"));
+        let line = line.expect("Unable to read line from stdin");
+        run(&line);
     }
 }
 
 fn run(script: &str) {
-    println!("Running {}", script);
+    if script.len() > 0 {
+        println!("Running {}", script);
+    }
 }
