@@ -38,31 +38,41 @@ impl Scanner {
                 ';' => self.append_token(Semicolon),
                 '*' => self.append_token(Star),
                 '!' => {
-                    if self.r#match('=') {
+                    if self.next_is('=') {
                         self.append_token(BangEqual);
                     } else {
                         self.append_token(Bang);
                     }
                 }
                 '=' => {
-                    if self.r#match('=') {
+                    if self.next_is('=') {
                         self.append_token(EqualEqual);
                     } else {
                         self.append_token(Equal);
                     }
                 }
                 '<' => {
-                    if self.r#match('=') {
+                    if self.next_is('=') {
                         self.append_token(LessEqual);
                     } else {
                         self.append_token(Less);
                     }
                 }
                 '>' => {
-                    if self.r#match('=') {
+                    if self.next_is('=') {
                         self.append_token(GreaterEqual);
                     } else {
                         self.append_token(Greater);
+                    }
+                }
+                '/' => {
+                    if self.next_is('/') {
+                        while self.peek() != '\n' && !self.at_end() {
+                            // keep eating character until the end of the line
+                            self.advance();
+                        }
+                    } else {
+                        self.append_token(Slash);
                     }
                 }
                 '\n' => self.line += 1,
@@ -83,12 +93,20 @@ impl Scanner {
         self.result.clone()
     }
 
-    fn r#match(&mut self, c: char) -> bool {
+    fn next_is(&mut self, c: char) -> bool {
         if self.at_end() || self.chars[self.current] != c {
             false
         } else {
             self.current += 1;
             true
+        }
+    }
+
+    fn peek(&self) -> char {
+        if self.at_end() {
+            '\0'
+        } else {
+            self.chars[self.current]
         }
     }
 
@@ -121,7 +139,7 @@ pub struct Token {
     line: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -170,4 +188,42 @@ pub enum TokenType {
     While,
 
     Eof,
+}
+
+#[cfg(test)]
+mod tests {
+    use core::assert_eq;
+
+    use super::*;
+
+    fn scan(input: &str) -> Vec<TokenType> {
+        Scanner::new(input)
+            .scan_tokens()
+            .iter()
+            .map(|t| t.token_type.clone())
+            .collect()
+    }
+
+    #[test]
+    fn it_reads_somments() {
+        assert_eq!(scan("// just a comment"), vec![Eof]);
+    }
+
+    #[test]
+    fn it_reads_bang_equals() {
+        assert_eq!(scan("asdf != foo;"), vec![BangEqual, Semicolon, Eof]);
+    }
+
+    #[test]
+    fn it_reads_bang_operator() {
+        assert_eq!(scan("10 ! 20;"), vec![Bang, Semicolon, Eof]);
+    }
+
+    #[test]
+    fn it_reads_a_bunch_of_single_character_lexemes() {
+        assert_eq!(
+            scan("() {} . <> * "),
+            vec![LeftParen, RightParen, LeftBrace, RightBrace, Dot, Less, Greater, Star, Eof]
+        )
+    }
 }
