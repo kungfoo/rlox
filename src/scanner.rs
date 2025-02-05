@@ -1,7 +1,9 @@
 use crate::lox;
+use TokenType::*;
 
 pub struct Scanner {
     source: String,
+    chars: Vec<char>,
     start: usize,
     current: usize,
     line: usize,
@@ -10,13 +12,14 @@ pub struct Scanner {
 
 impl Scanner {
     pub fn new(input: &str) -> Self {
-        return Scanner {
+        Scanner {
             source: String::from(input),
+            chars: input.chars().collect(),
             start: 0,
             current: 0,
             line: 1,
             result: vec![],
-        };
+        }
     }
 
     pub fn scan_tokens(&mut self) -> Vec<Token> {
@@ -24,17 +27,45 @@ impl Scanner {
             self.start = self.current;
             let char = self.advance();
             match char {
-                '(' => self.append_token(TokenType::LEFT_PAREN),
-                ')' => self.append_token(TokenType::RIGHT_PAREN),
-                '{' => self.append_token(TokenType::LEFT_BRACE),
-                '}' => self.append_token(TokenType::RIGHT_BRACE),
-                ',' => self.append_token(TokenType::COMMA),
-                '.' => self.append_token(TokenType::DOT),
-                '-' => self.append_token(TokenType::MINUS),
-                '+' => self.append_token(TokenType::PLUS),
-                ';' => self.append_token(TokenType::SEMICOLON),
-                '*' => self.append_token(TokenType::STAR),
-                '\n' => self.line = self.line + 1,
+                '(' => self.append_token(LeftParen),
+                ')' => self.append_token(RightParen),
+                '{' => self.append_token(LeftBrace),
+                '}' => self.append_token(RightBrace),
+                ',' => self.append_token(Comma),
+                '.' => self.append_token(Dot),
+                '-' => self.append_token(Minus),
+                '+' => self.append_token(Plus),
+                ';' => self.append_token(Semicolon),
+                '*' => self.append_token(Star),
+                '!' => {
+                    if self.r#match('=') {
+                        self.append_token(BangEqual);
+                    } else {
+                        self.append_token(Bang);
+                    }
+                }
+                '=' => {
+                    if self.r#match('=') {
+                        self.append_token(EqualEqual);
+                    } else {
+                        self.append_token(Equal);
+                    }
+                }
+                '<' => {
+                    if self.r#match('=') {
+                        self.append_token(LessEqual);
+                    } else {
+                        self.append_token(Less);
+                    }
+                }
+                '>' => {
+                    if self.r#match('=') {
+                        self.append_token(GreaterEqual);
+                    } else {
+                        self.append_token(Greater);
+                    }
+                }
+                '\n' => self.line += 1,
                 c => {
                     let message = format!("Unexpected character: {}", c);
                     lox::error(self.line, &message);
@@ -43,27 +74,35 @@ impl Scanner {
         }
 
         self.result.push(Token {
-            token_type: TokenType::EOF,
+            token_type: TokenType::Eof,
             lexeme: String::from(""),
             literal: String::from(""),
             line: self.line,
         });
 
-        return self.result.clone();
+        self.result.clone()
+    }
+
+    fn r#match(&mut self, c: char) -> bool {
+        if self.at_end() || self.chars[self.current] != c {
+            false
+        } else {
+            self.current += 1;
+            true
+        }
+    }
+
+    fn advance(&mut self) -> char {
+        let result = self.chars[self.current];
+        self.current += 1;
+        result
     }
 
     fn at_end(&self) -> bool {
         self.current >= self.source.len()
     }
 
-    fn advance(&mut self) -> char {
-        let chars: Vec<char> = self.source.chars().collect();
-        let result = chars[self.current];
-        self.current = self.current + 1;
-        result
-    }
-
-    fn append_token(&mut self, token_type: TokenType) -> () {
+    fn append_token(&mut self, token_type: TokenType) {
         let token = Token {
             token_type,
             lexeme: String::from(&self.source[self.start..self.current]),
@@ -85,50 +124,50 @@ pub struct Token {
 #[derive(Debug, Clone)]
 pub enum TokenType {
     // Single-character tokens.
-    LEFT_PAREN,
-    RIGHT_PAREN,
-    LEFT_BRACE,
-    RIGHT_BRACE,
-    COMMA,
-    DOT,
-    MINUS,
-    PLUS,
-    SEMICOLON,
-    SLASH,
-    STAR,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    Comma,
+    Dot,
+    Minus,
+    Plus,
+    Semicolon,
+    Slash,
+    Star,
 
     // One or two character tokens.
-    BANG,
-    BANG_EQUAL,
-    EQUAL,
-    EQUAL_EQUAL,
-    GREATER,
-    GREATER_EQUAL,
-    LESS,
-    LESS_EQUAL,
+    Bang,
+    BangEqual,
+    Equal,
+    EqualEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
 
     // Literals.
-    IDENTIFIER,
-    STRING,
-    NUMBER,
+    Identifier,
+    TString,
+    Number,
 
     // Keywords.
-    AND,
-    CLASS,
-    ELSE,
-    FALSE,
-    FUN,
-    FOR,
-    IF,
-    NIL,
-    OR,
-    PRINT,
-    RETURN,
-    SUPER,
-    THIS,
-    TRUE,
-    VAR,
-    WHILE,
+    And,
+    Class,
+    Else,
+    False,
+    Fun,
+    For,
+    If,
+    Nil,
+    Or,
+    Print,
+    Return,
+    Super,
+    This,
+    True,
+    Var,
+    While,
 
-    EOF,
+    Eof,
 }

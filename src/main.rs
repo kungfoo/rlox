@@ -35,7 +35,7 @@ fn run_prompt() {
 }
 
 fn run(script: &str) {
-    if script.len() > 0 {
+    if !script.is_empty() {
         let scanner = &mut scanner::Scanner::new(script);
         let tokens = scanner.scan_tokens();
         for token in tokens {
@@ -68,7 +68,7 @@ mod lox {
         STATE.lock().unwrap()
     }
 
-    pub fn error(line: usize, message: &str) -> () {
+    pub fn error(line: usize, message: &str) {
         report(line, "", message);
     }
 
