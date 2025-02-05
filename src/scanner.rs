@@ -1,3 +1,5 @@
+use core::{cmp::PartialEq, prelude::v1::derive};
+
 use crate::lox;
 use TokenType::*;
 
@@ -75,7 +77,9 @@ impl Scanner {
                         self.append_token(Slash);
                     }
                 }
+                '"' => self.consume_string(),
                 '\n' => self.line += 1,
+                '\t' => {}
                 c => {
                     let message = format!("Unexpected character: {}", c);
                     lox::error(self.line, &message);
@@ -86,7 +90,7 @@ impl Scanner {
         self.result.push(Token {
             token_type: TokenType::Eof,
             lexeme: String::from(""),
-            literal: String::from(""),
+            literal: LiteralType::Nil,
             line: self.line,
         });
 
@@ -120,11 +124,33 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
+    fn consume_string(&mut self) {
+        while self.peek() != '"' && !self.at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.at_end() {
+            lox::error(self.line, "Unterminated string.");
+            return;
+        }
+
+        self.advance();
+        let value = &self.source[self.start + 1..self.current - 1];
+        self.append_token_literal(TString, LiteralType::StringLiteral(String::from(value)));
+    }
+
     fn append_token(&mut self, token_type: TokenType) {
+        self.append_token_literal(token_type, LiteralType::Nil);
+    }
+
+    fn append_token_literal(&mut self, token_type: TokenType, literal: LiteralType) {
         let token = Token {
             token_type,
             lexeme: String::from(&self.source[self.start..self.current]),
-            literal: String::from(""),
+            literal,
             line: self.line,
         };
         self.result.push(token);
@@ -135,7 +161,7 @@ impl Scanner {
 pub struct Token {
     token_type: TokenType,
     lexeme: String,
-    literal: String,
+    literal: LiteralType,
     line: usize,
 }
 
@@ -190,6 +216,14 @@ pub enum TokenType {
     Eof,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum LiteralType {
+    Nil,
+    StringLiteral(String),
+    NumberLiteral(f32),
+    BooleanLiteral(bool),
+}
+
 #[cfg(test)]
 mod tests {
     use core::assert_eq;
@@ -224,6 +258,19 @@ mod tests {
         assert_eq!(
             scan("() {} . <> * "),
             vec![LeftParen, RightParen, LeftBrace, RightBrace, Dot, Less, Greater, Star, Eof]
+        )
+    }
+
+    #[test]
+    fn it_reads_a_string_literal() {
+        assert_eq!(scan("\"this is a string\";"), vec![TString, Semicolon, Eof]);
+    }
+
+    #[test]
+    fn it_reads_a_boolean_statement_with_strings() {
+        assert_eq!(
+            scan("\"asdf\" == \"boo\";"),
+            vec![TString, EqualEqual, TString, Semicolon, Eof]
         )
     }
 }
