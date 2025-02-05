@@ -1,3 +1,5 @@
+use crate::lox;
+
 pub struct Scanner {
     source: String,
     start: usize,
@@ -33,7 +35,10 @@ impl Scanner {
                 ';' => self.append_token(TokenType::SEMICOLON),
                 '*' => self.append_token(TokenType::STAR),
                 '\n' => self.line = self.line + 1,
-                c => eprintln!("Unexpected character {}", c),
+                c => {
+                    let message = format!("Unexpected character: {}", c);
+                    lox::error(self.line, &message);
+                }
             }
         }
 

@@ -1,22 +1,8 @@
-use core::fmt::Debug;
-use core::prelude::v1::derive;
 use std::fs;
 use std::io::{self, BufRead};
-use std::sync::{Mutex, MutexGuard};
 use std::{env, process::exit};
 
 mod scanner;
-
-#[derive(Debug)]
-struct State {
-    has_error: bool,
-}
-
-static STATE: Mutex<State> = Mutex::new(State { has_error: false });
-
-fn state() -> MutexGuard<'static, State> {
-    STATE.lock().unwrap()
-}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -34,7 +20,7 @@ fn run_file(filename: &str) {
     let contents =
         fs::read_to_string(filename).expect("Should have been able to read the script file");
     run(&contents);
-    if state().has_error {
+    if lox::state().has_error() {
         exit(65);
     }
 }
@@ -44,8 +30,7 @@ fn run_prompt() {
     for line in stdin.lock().lines() {
         let line = line.expect("Unable to read line from stdin");
         run(&line);
-        let mut state = state();
-        state.has_error = false;
+        lox::state().reset();
     }
 }
 
@@ -59,12 +44,37 @@ fn run(script: &str) {
     }
 }
 
-fn error(line: u16, message: &str) -> () {
-    report(line, "", message);
-}
+mod lox {
+    use std::sync::{Mutex, MutexGuard};
 
-fn report(line: u16, _where: &str, message: &str) {
-    eprintln!("[line {}] Error {}: {}", line, _where, message);
-    let mut state = state();
-    state.has_error = true;
+    #[derive(Debug)]
+    pub struct State {
+        has_error: bool,
+    }
+
+    impl State {
+        pub fn has_error(&self) -> bool {
+            self.has_error
+        }
+
+        pub fn reset(&mut self) {
+            self.has_error = false;
+        }
+    }
+
+    static STATE: Mutex<State> = Mutex::new(State { has_error: false });
+
+    pub fn state() -> MutexGuard<'static, State> {
+        STATE.lock().unwrap()
+    }
+
+    pub fn error(line: usize, message: &str) -> () {
+        report(line, "", message);
+    }
+
+    pub fn report(line: usize, _where: &str, message: &str) {
+        eprintln!("[line {}] Error {}: {}", line, _where, message);
+        let mut state = state();
+        state.has_error = true;
+    }
 }
