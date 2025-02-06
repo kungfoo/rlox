@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn it_reads_somments() {
+    fn it_reads_single_line_comments() {
         assert_eq!(scan("// just a comment"), vec![Eof]);
     }
 
