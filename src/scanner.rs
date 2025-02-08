@@ -1,4 +1,5 @@
 use core::{cmp::PartialEq, prelude::v1::derive};
+use std::thread::current;
 
 use crate::lox;
 use TokenType::*;
@@ -77,6 +78,7 @@ impl Scanner {
                         self.append_token(Slash);
                     }
                 }
+                '0'..='9' => self.consume_number(),
                 '"' => self.consume_string(),
                 '\n' => self.line += 1,
                 '\t' => {}
@@ -114,6 +116,13 @@ impl Scanner {
         }
     }
 
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            return '\0';
+        }
+        return self.chars[self.current + 1];
+    }
+
     fn advance(&mut self) -> char {
         let result = self.chars[self.current];
         self.current += 1;
@@ -140,6 +149,33 @@ impl Scanner {
         self.advance();
         let value = &self.source[self.start + 1..self.current - 1];
         self.append_token_literal(TString, LiteralType::StringLiteral(String::from(value)));
+    }
+
+    fn consume_number(&mut self) {
+        while self.is_digit(self.peek()) {
+            self.advance();
+        }
+
+        if self.peek() == '.' && self.is_digit(self.peek_next()) {
+            //consume the .
+            self.advance();
+
+            while self.is_digit(self.peek()) {
+                self.advance();
+            }
+        }
+        let value = &self.source[self.start..self.current];
+        let number: f32 = value
+            .parse::<f32>()
+            .expect("Could not convert value to f32");
+        self.append_token_literal(Number, LiteralType::NumberLiteral(number));
+    }
+
+    fn is_digit(&self, c: char) -> bool {
+        match c {
+            '0'..='9' => true,
+            _ => false,
+        }
     }
 
     fn append_token(&mut self, token_type: TokenType) {
@@ -250,7 +286,7 @@ mod tests {
 
     #[test]
     fn it_reads_bang_operator() {
-        assert_eq!(scan("10 ! 20;"), vec![Bang, Semicolon, Eof]);
+        assert_eq!(scan("10 ! 20;"), vec![Number, Bang, Number, Semicolon, Eof]);
     }
 
     #[test]
@@ -271,6 +307,19 @@ mod tests {
         assert_eq!(
             scan("\"asdf\" == \"boo\";"),
             vec![TString, EqualEqual, TString, Semicolon, Eof]
+        )
+    }
+
+    #[test]
+    fn it_reads_an_integer_number() {
+        assert_eq!(scan("var foo = 9;"), vec![Equal, Number, Semicolon, Eof])
+    }
+
+    #[test]
+    fn it_reads_a_float_number() {
+        assert_eq!(
+            scan("var foo = 9.123455443;"),
+            vec![Equal, Number, Semicolon, Eof]
         )
     }
 }
