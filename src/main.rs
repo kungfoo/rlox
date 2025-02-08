@@ -1,18 +1,27 @@
+use clap::Parser;
+use std::fmt::Debug;
 use std::fs;
 use std::io::{self, BufRead};
-use std::{env, process::exit};
+use std::process::exit;
 
 mod scanner;
 
+#[derive(Parser, Debug)]
+#[command(version, about)]
+struct Args {
+    #[arg(short, long, action)]
+    interactive: bool,
+
+    #[arg(short, long)]
+    file: Option<String>,
+}
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 2 {
-        println!("Usage: rlox [script]");
-        exit(64);
-    } else if args.len() == 2 {
-        run_file(&args[1]);
-    } else {
+    let args = Args::parse();
+    if args.interactive {
         run_prompt();
+    } else {
+        run_file(&args.file.unwrap());
     }
 }
 
