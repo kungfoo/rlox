@@ -1,2 +1,10 @@
+fun bar() {
+  var z = 20;
+  var x = z + 20;
+  return x;
+}
+
+bar();
+
 var a = 10;
 print "Hello Lox!";

@@ -100,7 +100,7 @@ impl Scanner {
                 '0'..='9' => self.consume_number(),
                 '"' => self.consume_string(),
                 '\n' => self.line += 1,
-                '\t' => {}
+                '\t' | ' ' => {}
                 c => {
                     if self.is_alpha(c) {
                         self.consume_identifier();
