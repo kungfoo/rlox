@@ -1,8 +1,27 @@
 use core::{cmp::PartialEq, prelude::v1::derive};
-use std::thread::current;
 
 use crate::lox;
+use phf::phf_map;
 use TokenType::*;
+
+static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
+    "and" => And,
+    "class" => Class,
+    "else" => Else,
+    "false" => False,
+    "for" => For,
+    "fun" => Fun,
+    "if" => If,
+    "nil" => Nil,
+    "or" => Or,
+    "print" => Print,
+    "return" => Return,
+    "super" => Super,
+    "this" => This,
+    "true"=> True,
+    "var" => Var,
+    "while" => While
+};
 
 pub struct Scanner {
     source: String,
@@ -83,8 +102,12 @@ impl Scanner {
                 '\n' => self.line += 1,
                 '\t' => {}
                 c => {
-                    let message = format!("Unexpected character: {}", c);
-                    lox::error(self.line, &message);
+                    if self.is_alpha(c) {
+                        self.consume_identifier();
+                    } else {
+                        let message = format!("Unexpected character: {}", c);
+                        lox::error(self.line, &message);
+                    }
                 }
             }
         }
@@ -120,7 +143,7 @@ impl Scanner {
         if self.current + 1 >= self.source.len() {
             return '\0';
         }
-        return self.chars[self.current + 1];
+        self.chars[self.current + 1]
     }
 
     fn advance(&mut self) -> char {
@@ -171,11 +194,25 @@ impl Scanner {
         self.append_token_literal(Number, LiteralType::NumberLiteral(number));
     }
 
-    fn is_digit(&self, c: char) -> bool {
-        match c {
-            '0'..='9' => true,
-            _ => false,
+    fn consume_identifier(&mut self) {
+        while self.is_alpha_numeric(self.peek()) {
+            self.advance();
         }
+
+        let value = &self.source[self.start..self.current];
+        self.append_token(KEYWORDS.get(value).unwrap_or(&Identifier).clone());
+    }
+
+    fn is_digit(&self, c: char) -> bool {
+        c.is_ascii_digit()
+    }
+
+    fn is_alpha(&self, c: char) -> bool {
+        matches!(c, 'a'..='z' | 'A'..='Z' | '_')
+    }
+
+    fn is_alpha_numeric(&self, c: char) -> bool {
+        self.is_digit(c) || self.is_alpha(c)
     }
 
     fn append_token(&mut self, token_type: TokenType) {
@@ -257,7 +294,6 @@ enum LiteralType {
     Nil,
     StringLiteral(String),
     NumberLiteral(f32),
-    BooleanLiteral(bool),
 }
 
 #[cfg(test)]
@@ -281,7 +317,10 @@ mod tests {
 
     #[test]
     fn it_reads_bang_equals() {
-        assert_eq!(scan("asdf != foo;"), vec![BangEqual, Semicolon, Eof]);
+        assert_eq!(
+            scan("asdf != foo;"),
+            vec![Identifier, BangEqual, Identifier, Semicolon, Eof]
+        );
     }
 
     #[test]
@@ -311,15 +350,39 @@ mod tests {
     }
 
     #[test]
+    fn it_reads_a_string_variable() {
+        assert_eq!(
+            scan("var foo = \"hello\";"),
+            vec![Var, Identifier, Equal, TString, Semicolon, Eof]
+        );
+    }
+
+    #[test]
     fn it_reads_an_integer_number() {
-        assert_eq!(scan("var foo = 9;"), vec![Equal, Number, Semicolon, Eof])
+        assert_eq!(
+            scan("var foo = 9;"),
+            vec![Var, Identifier, Equal, Number, Semicolon, Eof]
+        )
     }
 
     #[test]
     fn it_reads_a_float_number() {
         assert_eq!(
             scan("var foo = 9.123455443;"),
-            vec![Equal, Number, Semicolon, Eof]
+            vec![Var, Identifier, Equal, Number, Semicolon, Eof]
         )
+    }
+
+    #[test]
+    fn it_reads_a_boolean_variable_definition() {
+        assert_eq!(
+            scan("var snip = true;"),
+            vec![Var, Identifier, Equal, True, Semicolon, Eof]
+        );
+
+        assert_eq!(
+            scan("var snip = false;"),
+            vec![Var, Identifier, Equal, False, Semicolon, Eof]
+        );
     }
 }
